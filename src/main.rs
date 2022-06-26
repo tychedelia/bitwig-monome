@@ -93,6 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         grid.update_intensities();
 
         loop {
+            // State Transitions
             match rx_in.try_recv() {
                 Ok(msg) => {
                     let s = grid.get_state(msg.track, msg.scene);
@@ -144,13 +145,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Some(MonomeEvent::GridKey { x, y, direction }) => {
                     let x = x as usize;
                     let y = y as usize;
+                    let track = (x + 1) as u8;
+                    let scene = (y + 1) as u8;
+                    let s = grid.get_state(track, scene);
 
-                    // for k in 0..y {
-                    //     grid.set_intensity(x, k, 0);
-                    // }
-                    // for k in y..8 {
-                    //     grid.set_intensity(x, k, (16 - (k + 1) * 2) as u8);
-                    // }
+                    if let ClipState::Filled = s.state {
+                        tx_out.send(ControlMessage::Launch(track, scene)).unwrap();
+                    }
+                    if let ClipState::Playing = s.state {
+                        tx_out.send(ControlMessage::Stop(track, scene)).unwrap();
+                    }
                 }
                 _ => {
                     break;

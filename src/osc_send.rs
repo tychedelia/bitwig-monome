@@ -19,9 +19,9 @@ impl OscSend {
         }
     }
 
-    fn send_message(&self, addr: &str, args: Vec<OscType>) {
+    fn send_message(&self, addr: impl Into<String>, args: Vec<OscType>) {
         let msg_buf = encoder::encode(&OscPacket::Message(OscMessage {
-            addr: addr.to_string(),
+            addr: addr.into(),
             args,
         })).unwrap();
         self.sock.send_to(&msg_buf, self.to_addr).unwrap();
@@ -33,6 +33,9 @@ impl OscSend {
                 Ok(msg) => {
                     match msg {
                         ControlMessage::Refresh => self.send_message("/refresh", vec![]),
+                        ControlMessage::Launch(track, scene) => self.send_message(format!("/track/{track}/clip/{scene}/launch"), vec![]),
+                        ControlMessage::Stop(track, scene) => self.send_message(format!("/track/{track}/clip/stop"), vec![]),
+                        _ => {}
                     }
                 }
                 Err(_) => panic!("channel closed!")

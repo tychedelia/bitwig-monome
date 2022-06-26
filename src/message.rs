@@ -44,5 +44,7 @@ pub enum ClipEvent {
 
 #[derive(Debug)]
 pub enum ControlMessage {
-    Refresh
+    Refresh,
+    Launch(u8, u8),
+    Stop(u8, u8),
 }
