@@ -36,8 +36,8 @@ impl Clip {
             ClipState::Empty => self.intensity = 0,
             ClipState::Filled => self.intensity = 100,
             ClipState::Playing => self.intensity = 255,
-            ClipState::Queued => self.intensity = self.intensity.wrapping_add(10),
-            ClipState::Stopping => self.intensity = self.intensity.wrapping_sub(10),
+            ClipState::Queued => self.intensity = self.intensity.wrapping_add(1),
+            ClipState::Stopping => self.intensity = self.intensity.wrapping_sub(1),
         }
     }
 }
@@ -82,7 +82,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         r.run();
     });
     thread::spawn(|| {
-        let s = OscSend { rx: rx_out };
+        let bind_addr = "127.0.0.1:9001".parse().unwrap();
+        let to_addr = "127.0.0.1:8000".parse().unwrap();
+        let s = OscSend::new(rx_out, bind_addr, to_addr);
         s.run();
     });
 
@@ -99,13 +101,17 @@ fn main() -> Result<(), Box<dyn Error>> {
                             s.state = ClipState::Playing
                         }
                         (ClipEvent::Playing, false) => {
-                            s.state = ClipState::Filled
+                            if let ClipState::Playing = s.state {
+                                s.state = ClipState::Filled
+                            }
                         }
                         (ClipEvent::Stopping, true) => {
                             s.state = ClipState::Stopping
                         }
                         (ClipEvent::Stopping, false) => {
-                            s.state = ClipState::Filled
+                            if let ClipState::Playing = s.state {
+                                s.state = ClipState::Filled
+                            }
                         }
                         (ClipEvent::Content, true) => {
                             s.state = ClipState::Filled
@@ -117,7 +123,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                             s.state = ClipState::Queued
                         }
                         (ClipEvent::Queued, false) => {
-                            s.state = ClipState::Filled
+                            if let ClipState::Playing = s.state {
+                                s.state = ClipState::Filled
+                            }
                         }
                         _ => {}
                     }
