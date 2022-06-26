@@ -18,7 +18,7 @@ impl OscRecv {
             match sock.recv_from(&mut buf) {
                 Ok((size, addr)) => {
                     let (_, packet) = rosc::decoder::decode_udp(&buf[..size]).unwrap();
-                                  self.handle_packet(packet);
+                    self.handle_packet(packet);
                 }
                 Err(e) => {
                     println!("Error receiving from socket: {}", e);
@@ -56,19 +56,24 @@ impl OscRecv {
         let active = Self::arg_to_bool(&msg.args[0]);
         match msg.addr.as_str() {
             s if s.ends_with("isPlayingQueued") => {
-                self.tx.send(ClipMessage::new(track, scene, active, ClipEvent::Queued));
+                self.tx
+                    .send(ClipMessage::new(track, scene, active, ClipEvent::Queued));
             }
             s if s.ends_with("hasContent") => {
-                self.tx.send(ClipMessage::new(track, scene, active, ClipEvent::Content));
+                self.tx
+                    .send(ClipMessage::new(track, scene, active, ClipEvent::Content));
             }
             s if s.ends_with("isSelected") => {
-                self.tx.send(ClipMessage::new(track, scene, active, ClipEvent::Selected));
+                self.tx
+                    .send(ClipMessage::new(track, scene, active, ClipEvent::Selected));
             }
             s if s.ends_with("isStopQueued") => {
-                self.tx.send(ClipMessage::new(track, scene, active, ClipEvent::Stopping));
+                self.tx
+                    .send(ClipMessage::new(track, scene, active, ClipEvent::Stopping));
             }
             s if s.ends_with("isPlaying") => {
-                self.tx.send(ClipMessage::new(track, scene, active, ClipEvent::Playing));
+                self.tx
+                    .send(ClipMessage::new(track, scene, active, ClipEvent::Playing));
             }
             _ => {}
         }
@@ -80,9 +85,9 @@ impl OscRecv {
                 0 => false,
                 1 => true,
                 _ => panic!("unexpected bool int!"),
-            }
+            },
             OscType::Bool(b) => *b,
-            _ => false
+            _ => false,
         }
     }
 

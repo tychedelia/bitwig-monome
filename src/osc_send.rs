@@ -1,8 +1,8 @@
+use crate::{ClipMessage, ControlMessage};
+use rosc::{encoder, OscMessage, OscPacket, OscType};
 use std::net::{SocketAddr, SocketAddrV4, UdpSocket};
 use std::str::FromStr;
 use std::sync::mpsc::{Receiver, RecvError};
-use rosc::{encoder, OscMessage, OscPacket, OscType};
-use crate::{ClipMessage, ControlMessage};
 
 pub struct OscSend {
     pub(crate) rx: Receiver<ControlMessage>,
@@ -11,7 +11,11 @@ pub struct OscSend {
 }
 
 impl OscSend {
-    pub(crate) fn new(rx: Receiver<ControlMessage>, bind_addr: SocketAddr, to_addr: SocketAddr) -> Self {
+    pub(crate) fn new(
+        rx: Receiver<ControlMessage>,
+        bind_addr: SocketAddr,
+        to_addr: SocketAddr,
+    ) -> Self {
         Self {
             rx,
             sock: UdpSocket::bind(bind_addr).unwrap(),
@@ -23,22 +27,25 @@ impl OscSend {
         let msg_buf = encoder::encode(&OscPacket::Message(OscMessage {
             addr: addr.into(),
             args,
-        })).unwrap();
+        }))
+        .unwrap();
         self.sock.send_to(&msg_buf, self.to_addr).unwrap();
     }
 
     pub(crate) fn run(self) {
         loop {
             match self.rx.recv() {
-                Ok(msg) => {
-                    match msg {
-                        ControlMessage::Refresh => self.send_message("/refresh", vec![]),
-                        ControlMessage::Launch(track, scene) => self.send_message(format!("/track/{track}/clip/{scene}/launch"), vec![]),
-                        ControlMessage::Stop(track, scene) => self.send_message(format!("/track/{track}/clip/stop"), vec![]),
-                        _ => {}
+                Ok(msg) => match msg {
+                    ControlMessage::Refresh => self.send_message("/refresh", vec![]),
+                    ControlMessage::Launch(track, scene) => {
+                        self.send_message(format!("/track/{track}/clip/{scene}/launch"), vec![])
                     }
-                }
-                Err(_) => panic!("channel closed!")
+                    ControlMessage::Stop(track, scene) => {
+                        self.send_message(format!("/track/{track}/clip/stop"), vec![])
+                    }
+                    _ => {}
+                },
+                Err(_) => panic!("channel closed!"),
             }
         }
     }

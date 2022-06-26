@@ -6,6 +6,7 @@ mod osc_recv;
 mod osc_send;
 
 use crate::message::{ClipEvent, ClipMessage, ClipState, ControlMessage};
+use crate::osc_send::OscSend;
 use monome::{Monome, MonomeEvent};
 use osc_recv::OscRecv;
 use std::error::Error;
@@ -13,7 +14,6 @@ use std::ptr::hash;
 use std::sync::mpsc::{channel, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::osc_send::OscSend;
 
 #[derive(Debug, Clone)]
 struct Clip {
@@ -25,10 +25,10 @@ const BLINK_RATE: Duration = Duration::from_millis(500);
 
 impl Clip {
     fn new() -> Self {
-       Self {
-           state: ClipState::Empty,
-           intensity: 0,
-       }
+        Self {
+            state: ClipState::Empty,
+            intensity: 0,
+        }
     }
 
     fn update_intensity(&mut self) {
@@ -98,31 +98,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Ok(msg) => {
                     let s = grid.get_state(msg.track, msg.scene);
                     match (msg.event, msg.active) {
-                        (ClipEvent::Playing, true) => {
-                            s.state = ClipState::Playing
-                        }
+                        (ClipEvent::Playing, true) => s.state = ClipState::Playing,
                         (ClipEvent::Playing, false) => {
                             if let ClipState::Playing = s.state {
                                 s.state = ClipState::Filled
                             }
                         }
-                        (ClipEvent::Stopping, true) => {
-                            s.state = ClipState::Stopping
-                        }
+                        (ClipEvent::Stopping, true) => s.state = ClipState::Stopping,
                         (ClipEvent::Stopping, false) => {
                             if let ClipState::Playing = s.state {
                                 s.state = ClipState::Filled
                             }
                         }
-                        (ClipEvent::Content, true) => {
-                            s.state = ClipState::Filled
-                        }
-                        (ClipEvent::Content, false) => {
-                            s.state = ClipState::Empty
-                        }
-                        (ClipEvent::Queued, true) => {
-                            s.state = ClipState::Queued
-                        }
+                        (ClipEvent::Content, true) => s.state = ClipState::Filled,
+                        (ClipEvent::Content, false) => s.state = ClipState::Empty,
+                        (ClipEvent::Queued, true) => s.state = ClipState::Queued,
                         (ClipEvent::Queued, false) => {
                             if let ClipState::Playing = s.state {
                                 s.state = ClipState::Filled
@@ -130,7 +120,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }
                         _ => {}
                     }
-                },
+                }
                 Err(err) => match err {
                     TryRecvError::Empty => break,
                     TryRecvError::Disconnected => panic!("channel closed"),

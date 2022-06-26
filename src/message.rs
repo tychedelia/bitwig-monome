@@ -28,7 +28,7 @@ impl ClipMessage {
             track,
             scene,
             active,
-            event
+            event,
         }
     }
 }
