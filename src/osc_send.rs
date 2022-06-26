@@ -1,8 +1,8 @@
-use crate::{ClipMessage, ControlMessage};
+use crate::{ControlMessage};
 use rosc::{encoder, OscMessage, OscPacket, OscType};
-use std::net::{SocketAddr, SocketAddrV4, UdpSocket};
-use std::str::FromStr;
-use std::sync::mpsc::{Receiver, RecvError};
+use std::net::{SocketAddr, UdpSocket};
+
+use std::sync::mpsc::{Receiver};
 
 pub struct OscSend {
     pub(crate) rx: Receiver<ControlMessage>,
@@ -40,7 +40,7 @@ impl OscSend {
                     ControlMessage::Launch(track, scene) => {
                         self.send_message(format!("/track/{track}/clip/{scene}/launch"), vec![])
                     }
-                    ControlMessage::Stop(track, scene) => {
+                    ControlMessage::Stop(track, _scene) => {
                         self.send_message(format!("/track/{track}/clip/stop"), vec![])
                     }
                     _ => {}

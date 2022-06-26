@@ -1,9 +1,9 @@
-use crate::message::{Clip, ClipEvent, ClipMessage};
+use crate::message::{ClipEvent, ClipMessage};
 use rosc::OscPacket::{Bundle, Message};
 use rosc::{OscBundle, OscMessage, OscPacket, OscType};
-use std::net::{SocketAddrV4, UdpSocket};
-use std::sync::mpsc::{channel, Sender};
-use std::thread;
+use std::net::{UdpSocket};
+use std::sync::mpsc::{Sender};
+
 
 pub(crate) struct OscRecv {
     pub(crate) tx: Sender<ClipMessage>,
@@ -16,7 +16,7 @@ impl OscRecv {
 
         loop {
             match sock.recv_from(&mut buf) {
-                Ok((size, addr)) => {
+                Ok((size, _addr)) => {
                     let (_, packet) = rosc::decoder::decode_udp(&buf[..size]).unwrap();
                     self.handle_packet(packet);
                 }
@@ -92,9 +92,9 @@ impl OscRecv {
     }
 
     fn parse_track_and_scene(msg: &OscMessage) -> (u8, u8) {
-        let parts: Vec<_> = msg.addr.split("/").collect();
-        let track = parts[2].parse().expect(format!("{:?}", msg.addr).as_str());
-        let scene = parts[4].parse().expect(format!("{:?}", msg.addr).as_str());
+        let parts: Vec<_> = msg.addr.split('/').collect();
+        let track = parts[2].parse().unwrap_or_else(|_| panic!("{:?}", msg.addr));
+        let scene = parts[4].parse().unwrap_or_else(|_| panic!("{:?}", msg.addr));
         (track, scene)
     }
 }

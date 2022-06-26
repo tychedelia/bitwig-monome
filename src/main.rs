@@ -5,15 +5,15 @@ mod message;
 mod osc_recv;
 mod osc_send;
 
-use crate::message::{ClipEvent, ClipMessage, ClipState, ControlMessage};
+use crate::message::{ClipEvent, ClipState, ControlMessage};
 use crate::osc_send::OscSend;
 use monome::{Monome, MonomeEvent};
 use osc_recv::OscRecv;
 use std::error::Error;
-use std::ptr::hash;
+
 use std::sync::mpsc::{channel, TryRecvError};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration};
 
 #[derive(Debug, Clone)]
 struct Clip {
@@ -132,7 +132,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let e = monome.poll();
 
             match e {
-                Some(MonomeEvent::GridKey { x, y, direction }) => {
+                Some(MonomeEvent::GridKey { x, y, direction: _ }) => {
                     let x = x as usize;
                     let y = y as usize;
                     let track = (x + 1) as u8;
