@@ -1,17 +1,25 @@
 use crate::message::{ClipEvent, ClipMessage};
 use rosc::OscPacket::{Bundle, Message};
 use rosc::{OscBundle, OscMessage, OscPacket, OscType};
-use std::net::{UdpSocket};
+use std::net::{SocketAddr, UdpSocket};
 use std::sync::mpsc::{Sender};
 
 
 pub(crate) struct OscRecv {
     pub(crate) tx: Sender<ClipMessage>,
+    bind_addr: SocketAddr,
 }
 
 impl OscRecv {
+    pub(crate) fn new(tx: Sender<ClipMessage>, bind_addr: SocketAddr) -> Self {
+        Self {
+            tx,
+            bind_addr,
+        }
+    }
+
     pub(crate) fn run(self) {
-        let sock = UdpSocket::bind("127.0.0.1:9000").unwrap();
+        let sock = UdpSocket::bind(self.bind_addr).unwrap();
         let mut buf = [0u8; 8192];
 
         loop {

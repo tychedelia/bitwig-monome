@@ -10,10 +10,22 @@ use crate::osc_send::OscSend;
 use monome::{Monome, MonomeEvent};
 use osc_recv::OscRecv;
 use std::error::Error;
+use std::net::SocketAddr;
+use clap::Parser;
 
 use std::sync::mpsc::{channel, TryRecvError};
 use std::thread;
 use std::time::{Duration};
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(short, long, value_parser, default_value = "127.0.0.1:9000")]
+    pub bitwig_addr: SocketAddr,
+
+    #[clap(short, long, value_parser, default_value = "127.0.0.1:8000")]
+    pub osc_addr: SocketAddr,
+}
 
 #[derive(Debug, Clone)]
 struct Clip {
@@ -67,6 +79,7 @@ impl Grid {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let args: Args = Args::parse();
     let mut grid = Grid::new();
 
     let mut monome = Monome::new("/prefix".to_string()).unwrap();
@@ -77,14 +90,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx_in, rx_in) = channel();
     let (tx_out, rx_out) = channel();
 
-    thread::spawn(|| {
-        let r = OscRecv { tx: tx_in };
+    thread::spawn(move || {
+        let r = OscRecv::new(tx_in, args.bitwig_addr);
         r.run();
     });
-    thread::spawn(|| {
-        let bind_addr = "127.0.0.1:9001".parse().unwrap();
-        let to_addr = "127.0.0.1:8000".parse().unwrap();
-        let s = OscSend::new(rx_out, bind_addr, to_addr);
+    thread::spawn(move || {
+        let bind_addr  = "127.0.0.1:0".parse().unwrap();
+        let s = OscSend::new(rx_out, bind_addr, args.osc_addr);
         s.run();
     });
 
@@ -100,22 +112,25 @@ fn main() -> Result<(), Box<dyn Error>> {
                     match (msg.event, msg.active) {
                         (ClipEvent::Playing, true) => s.state = ClipState::Playing,
                         (ClipEvent::Playing, false) => {
-                            if let ClipState::Playing = s.state {
-                                s.state = ClipState::Filled
+                            match s.state {
+                                ClipState::Playing => s.state = ClipState::Filled,
+                                _ => panic!("{:?}", s.state)
                             }
                         }
                         (ClipEvent::Stopping, true) => s.state = ClipState::Stopping,
                         (ClipEvent::Stopping, false) => {
-                            if let ClipState::Playing = s.state {
-                                s.state = ClipState::Filled
+                            match s.state {
+                                ClipState::Playing => s.state = ClipState::Filled,
+                                _ => panic!("{:?}", s.state)
                             }
                         }
                         (ClipEvent::Content, true) => s.state = ClipState::Filled,
                         (ClipEvent::Content, false) => s.state = ClipState::Empty,
                         (ClipEvent::Queued, true) => s.state = ClipState::Queued,
                         (ClipEvent::Queued, false) => {
-                            if let ClipState::Playing = s.state {
-                                s.state = ClipState::Filled
+                            match s.state {
+                                ClipState::Playing => s.state = ClipState::Filled,
+                                _ => panic!("{:?}", s.state)
                             }
                         }
                         _ => {}
