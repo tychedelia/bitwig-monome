@@ -1,6 +1,5 @@
 #![feature(div_duration)]
 
-mod grid;
 mod message;
 mod osc_recv;
 mod osc_send;
@@ -32,8 +31,6 @@ struct Clip {
     state: ClipState,
     intensity: u8,
 }
-
-const BLINK_RATE: Duration = Duration::from_millis(500);
 
 impl Clip {
     fn new() -> Self {
