@@ -6,9 +6,10 @@ mod osc_send;
 mod device;
 mod bitwig;
 
+use std::any::{Any, TypeId};
 use crate::message::{ClipEvent, ControlMessage};
 use crate::osc_send::OscSend;
-use monome::{Monome, MonomeEvent};
+use monome::{Monome, MonomeDeviceType, MonomeEvent};
 use osc_recv::OscRecv;
 use std::error::Error;
 use std::net::SocketAddr;
@@ -17,6 +18,9 @@ use clap::Parser;
 use std::sync::mpsc::{channel, TryRecvError};
 use std::thread;
 use std::time::{Duration};
+use tracing::Level;
+use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::layer::SubscriberExt;
 use crate::bitwig::clip::ClipState;
 use crate::device::grid::Grid;
 
@@ -31,13 +35,17 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // install tracing
+    let subscriber = tracing_subscriber::registry()
+        .with(
+            EnvFilter::from_default_env()
+                .add_directive(tracing::Level::INFO.into())
+        )
+        .with(fmt::Layer::new().pretty().with_writer(std::io::stdout));
+    tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global collector");
+
+    // run clap
     let args: Args = Args::parse();
-    let mut grid = Grid::new();
-
-    let mut monome = Monome::new("/prefix".to_string()).unwrap();
-    monome.set_all_intensity(&grid.get_intensities());
-
-    let refresh = std::time::Duration::from_millis(10);
 
     let (tx_in, rx_in) = channel();
     let (tx_out, rx_out) = channel();
@@ -53,72 +61,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
 
     tx_out.send(ControlMessage::Refresh)?;
-    loop {
-        loop {
-            // State Transitions
-            match rx_in.try_recv() {
-                Ok(msg) => {
-                    let s = grid.get_state(msg.track, msg.scene);
-                    match (msg.event, msg.active) {
-                        (ClipEvent::Playing, true) => s.state = ClipState::Playing,
-                        (ClipEvent::Playing, false) => {
-                            match s.state {
-                                ClipState::Playing => s.state = ClipState::Filled,
-                                _ => panic!("{:?}", s.state)
-                            }
-                        }
-                        (ClipEvent::Stopping, true) => s.state = ClipState::Stopping,
-                        (ClipEvent::Stopping, false) => {
-                            match s.state {
-                                ClipState::Playing => s.state = ClipState::Filled,
-                                _ => panic!("{:?}", s.state)
-                            }
-                        }
-                        (ClipEvent::Content, true) => s.state = ClipState::Filled,
-                        (ClipEvent::Content, false) => s.state = ClipState::Empty,
-                        (ClipEvent::Queued, true) => s.state = ClipState::Queued,
-                        (ClipEvent::Queued, false) => {
-                            match s.state {
-                                ClipState::Playing => s.state = ClipState::Filled,
-                                _ => panic!("{:?}", s.state)
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                Err(err) => match err {
-                    TryRecvError::Empty => break,
-                    TryRecvError::Disconnected => panic!("channel closed"),
-                },
-            }
+
+    let mut monome = Monome::new("/bitwig-monome".to_string()).unwrap();
+    match monome.device_type() {
+        MonomeDeviceType::Grid => {
+            let mut grid = Grid::new(tx_out, rx_in, monome);
+            grid.run();
         }
-
-        loop {
-            let e = monome.poll();
-
-            match e {
-                Some(MonomeEvent::GridKey { x, y, direction: _ }) => {
-                    let x = x as usize;
-                    let y = y as usize;
-                    let track = (x + 1) as u8;
-                    let scene = (y + 1) as u8;
-                    let s = grid.get_state(track, scene);
-
-                    if let ClipState::Filled = s.state {
-                        tx_out.send(ControlMessage::Launch(track, scene)).unwrap();
-                    }
-                    if let ClipState::Playing = s.state {
-                        tx_out.send(ControlMessage::Stop(track, scene)).unwrap();
-                    }
-                }
-                _ => {
-                    break;
-                }
-            }
+        MonomeDeviceType::Arc => {}
+        MonomeDeviceType::Unknown => {
+            tracing::error!(?monome, "unknown device");
+            panic!("unknown monome device");
         }
-
-        grid.update_intensities();
-        monome.set_all_intensity(&grid.get_intensities());
-        std::thread::sleep(refresh);
     }
+
+    return Ok(());
 }
