@@ -6,19 +6,19 @@ mod osc_send;
 mod device;
 mod bitwig;
 
-use std::any::{Any, TypeId};
+
 use crate::message::{ClipEvent, ControlMessage};
 use crate::osc_send::OscSend;
-use monome::{Monome, MonomeDeviceType, MonomeEvent};
+use monome::{Monome, MonomeDeviceType};
 use osc_recv::OscRecv;
 use std::error::Error;
 use std::net::SocketAddr;
 use clap::Parser;
 
-use std::sync::mpsc::{channel, TryRecvError};
+use std::sync::mpsc::{channel};
 use std::thread;
-use std::time::{Duration};
-use tracing::Level;
+
+
 use tracing_subscriber::{EnvFilter, fmt};
 use tracing_subscriber::layer::SubscriberExt;
 use crate::bitwig::clip::ClipState;
@@ -62,10 +62,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     tx_out.send(ControlMessage::Refresh)?;
 
-    let mut monome = Monome::new("/bitwig-monome".to_string()).unwrap();
+    let monome = Monome::new("/bitwig-monome".to_string()).unwrap();
     match monome.device_type() {
         MonomeDeviceType::Grid => {
-            let mut grid = Grid::new(tx_out, rx_in, monome);
+            let grid = Grid::new(tx_out, rx_in, monome);
             grid.run();
         }
         MonomeDeviceType::Arc => {}
@@ -75,5 +75,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    return Ok(());
+    Ok(())
 }
