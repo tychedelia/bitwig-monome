@@ -18,11 +18,11 @@ use clap::Parser;
 use std::sync::mpsc::{channel};
 use std::thread;
 
-
 use tracing_subscriber::{EnvFilter, fmt};
 use tracing_subscriber::layer::SubscriberExt;
 use crate::bitwig::clip::ClipState;
 use crate::device::grid::Grid;
+use crate::device::arc::Arc;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -47,6 +47,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // run clap
     let args: Args = Args::parse();
 
+    tracing::info!(?args, "listening");
+
     let (tx_in, rx_in) = channel();
     let (tx_out, rx_out) = channel();
 
@@ -65,13 +67,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let monome = Monome::new("/bitwig-monome".to_string()).unwrap();
     match monome.device_type() {
         MonomeDeviceType::Grid => {
+            tracing::info!(?monome, "found grid device");
             let grid = Grid::new(tx_out, rx_in, monome);
             grid.run();
         }
-        MonomeDeviceType::Arc => {}
+        MonomeDeviceType::Arc => {
+            tracing::info!(?monome, "found arc device");
+            let arc = Arc::new(tx_out, rx_in, monome);
+            arc.run();
+        }
         MonomeDeviceType::Unknown => {
             tracing::error!(?monome, "unknown device");
-            panic!("unknown monome device");
+            panic!("unknown monome device!");
         }
     }
 

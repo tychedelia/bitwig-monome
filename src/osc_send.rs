@@ -43,7 +43,6 @@ impl OscSend {
                     ControlMessage::Stop(track, _scene) => {
                         self.send_message(format!("/track/{track}/clip/stop"), vec![])
                     }
-                    _ => {}
                 },
                 Err(_) => panic!("channel closed!"),
             }
