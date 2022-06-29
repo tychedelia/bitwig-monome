@@ -2,6 +2,22 @@
 pub enum BitwigMessage {
     Clip(ClipMessage),
     Track(TrackMessage),
+    Primary(DeviceMessage),
+}
+
+#[derive(Debug)]
+pub struct DeviceMessage {
+    pub(crate) param: u8,
+    pub(crate) value: i32, // MAX_VALUE is u8 by default, but can be configured in the osc controller under res
+}
+
+impl DeviceMessage {
+    pub fn new(param: u8, value: i32) -> Self {
+        Self {
+            param,
+            value
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -35,7 +51,18 @@ pub enum ClipEvent {
 #[derive(Debug)]
 pub struct TrackMessage {
     track: u8,
-    event: TrackEvent,
+    active: bool,
+    pub(crate) event: TrackEvent,
+}
+
+impl TrackMessage {
+    pub fn new(track: u8, active: bool, event: TrackEvent) -> Self {
+        Self {
+            track,
+            active,
+            event
+        }
+    }
 }
 
 #[derive(Debug)]

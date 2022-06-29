@@ -77,7 +77,7 @@ impl Grid {
                     Ok(_) => {},
                     Err(err) => match err {
                         TryRecvError::Empty => break,
-                        TryRecvError::Disconnected => panic!("channel closed"),
+                        TryRecvError::Disconnected => panic!("channel closed!"),
                     },
                 }
             }

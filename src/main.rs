@@ -1,21 +1,20 @@
 #![feature(div_duration)]
 
-mod osc_recv;
-mod osc_send;
 mod device;
 mod bitwig;
 
 
 use bitwig::message::{ClipEvent, ControlMessage};
-use crate::osc_send::OscSend;
+use bitwig::osc_send::OscSend;
 use monome::{Monome, MonomeDeviceType};
-use osc_recv::OscRecv;
+use bitwig::osc_recv::OscRecv;
 use std::error::Error;
 use std::net::SocketAddr;
 use clap::Parser;
 
 use std::sync::mpsc::channel;
 use std::thread;
+use std::time::Duration;
 
 use tracing_subscriber::{EnvFilter, fmt};
 use tracing_subscriber::layer::SubscriberExt;
@@ -62,10 +61,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
     tracing::info!(?args, "listening");
 
+    // wait for device to connect
+    let monome = loop {
+        match Monome::new("/bitwig-monome".to_string()) {
+            Ok(m) => break m,
+            Err(e) => {
+                match e.as_str() {
+                    "No devices detected" => {
+                        thread::sleep(Duration::from_secs(1));
+                        continue
+                    }
+                    _ => panic!("{}", e)
+                }
+            },
+        };
+    };
+
+    // get initial state from bitwig
     tx_out.send(ControlMessage::Refresh)?;
 
     // select connected device
-    let monome = Monome::new("/bitwig-monome".to_string()).unwrap();
     match monome.device_type() {
         MonomeDeviceType::Grid => {
             tracing::info!(?monome, "found grid device");
