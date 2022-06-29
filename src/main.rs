@@ -3,8 +3,10 @@
 mod message;
 mod osc_recv;
 mod osc_send;
+mod device;
+mod bitwig;
 
-use crate::message::{ClipEvent, ClipState, ControlMessage};
+use crate::message::{ClipEvent, ControlMessage};
 use crate::osc_send::OscSend;
 use monome::{Monome, MonomeEvent};
 use osc_recv::OscRecv;
@@ -15,6 +17,8 @@ use clap::Parser;
 use std::sync::mpsc::{channel, TryRecvError};
 use std::thread;
 use std::time::{Duration};
+use crate::bitwig::clip::ClipState;
+use crate::device::grid::Grid;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -24,55 +28,6 @@ struct Args {
 
     #[clap(short, long, value_parser, default_value = "127.0.0.1:8000")]
     pub osc_addr: SocketAddr,
-}
-
-#[derive(Debug, Clone)]
-struct Clip {
-    state: ClipState,
-    intensity: u8,
-}
-
-impl Clip {
-    fn new() -> Self {
-        Self {
-            state: ClipState::Empty,
-            intensity: 0,
-        }
-    }
-
-    fn update_intensity(&mut self) {
-        match self.state {
-            ClipState::Empty => self.intensity = 0,
-            ClipState::Filled => self.intensity = 100,
-            ClipState::Playing => self.intensity = 255,
-            ClipState::Queued => self.intensity = self.intensity.wrapping_add(1),
-            ClipState::Stopping => self.intensity = self.intensity.wrapping_sub(1),
-        }
-    }
-}
-
-struct Grid {
-    grid: Vec<Clip>,
-}
-
-impl Grid {
-    pub fn new() -> Self {
-        Self {
-            grid: vec![Clip::new(); 128],
-        }
-    }
-
-    fn update_intensities(&mut self) {
-        self.grid.iter_mut().for_each(|x| x.update_intensity());
-    }
-
-    fn get_state(&mut self, track: u8, scene: u8) -> &mut Clip {
-        &mut self.grid[(scene as usize - 1) * 16 + (track as usize - 1)]
-    }
-
-    fn get_intensities(&self) -> Vec<u8> {
-        self.grid.iter().map(|x| x.intensity).collect()
-    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -99,8 +54,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     tx_out.send(ControlMessage::Refresh)?;
     loop {
-        grid.update_intensities();
-
         loop {
             // State Transitions
             match rx_in.try_recv() {
@@ -164,6 +117,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
+        grid.update_intensities();
         monome.set_all_intensity(&grid.get_intensities());
         std::thread::sleep(refresh);
     }

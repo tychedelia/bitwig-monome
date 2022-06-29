@@ -1,20 +1,4 @@
 #[derive(Debug)]
-pub struct Clip {
-    pub(crate) track: u8,
-    pub(crate) scene: u8,
-    pub(crate) state: ClipState,
-}
-
-#[derive(Debug, Clone)]
-pub enum ClipState {
-    Empty,
-    Filled,
-    Playing,
-    Queued,
-    Stopping,
-}
-
-#[derive(Debug)]
 pub struct ClipMessage {
     pub(crate) track: u8,
     pub(crate) scene: u8,

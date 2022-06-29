@@ -1,10 +1,10 @@
-# bitwig-monome-grid
+# bitwig-monome
 
 ## Installation
 
 1. Install the Rust toolchain via [`rustup`](https://rustup.rs/).
 2. Build the application `cargo build --release`.
-3. Put `target/release/bitwig-monome-grid` anywhere on your path.
+3. Put `target/release/bitwig-monome` anywhere on your path.
 4. Install DrivenByMoss and follow instructions to set up the OSC controller
 in Bitwig.
 

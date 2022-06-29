@@ -1,5 +1,5 @@
 [package]
-name = "bitwig-monome-grid"
+name = "bitwig-monome"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,3 +7,4 @@ edition = "2021"
 monome-rs = "1.1.3"
 rosc = "0.7.0"
 clap = { version = "3.2.6", features = ["derive"] }
+tracing = "0.1.35"
