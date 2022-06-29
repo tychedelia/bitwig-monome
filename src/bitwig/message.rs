@@ -1,4 +1,10 @@
 #[derive(Debug)]
+pub enum BitwigMessage {
+    Clip(ClipMessage),
+    Track(TrackMessage),
+}
+
+#[derive(Debug)]
 pub struct ClipMessage {
     pub(crate) track: u8,
     pub(crate) scene: u8,
@@ -25,6 +31,18 @@ pub enum ClipEvent {
     Content,
     Selected,
 }
+
+#[derive(Debug)]
+pub struct TrackMessage {
+    track: u8,
+    event: TrackEvent,
+}
+
+#[derive(Debug)]
+pub enum TrackEvent {
+    Selected,
+}
+
 
 #[derive(Debug)]
 pub enum ControlMessage {

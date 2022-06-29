@@ -3,17 +3,17 @@ use std::time::Duration;
 use monome::{Monome, MonomeEvent};
 use crate::bitwig::clip::Clip;
 use crate::{ClipEvent, ClipState, ControlMessage};
-use crate::message::ClipMessage;
+use crate::bitwig::message::{BitwigMessage, ClipMessage};
 
 pub(crate) struct Grid {
-    rx: Receiver<ClipMessage>,
+    rx: Receiver<BitwigMessage>,
     tx: Sender<ControlMessage>,
     grid: Vec<Clip>,
     monome: Monome,
 }
 
 impl Grid {
-    pub fn new(tx: Sender<ControlMessage>, rx: Receiver<ClipMessage>, monome: Monome) -> Self {
+    pub fn new(tx: Sender<ControlMessage>, rx: Receiver<BitwigMessage>, monome: Monome) -> Self {
         Self {
             rx,
             tx,
@@ -45,7 +45,7 @@ impl Grid {
             loop {
                 // State Transitions
                 match self.rx.try_recv() {
-                    Ok(msg) => {
+                    Ok(BitwigMessage::Clip(msg)) => {
                         let s = self.clip_mut(msg.track, msg.scene);
                         match (msg.event, msg.active) {
                             (ClipEvent::Playing, true) => s.state = ClipState::Playing,
@@ -74,6 +74,7 @@ impl Grid {
                             _ => {}
                         }
                     }
+                    Ok(_) => {},
                     Err(err) => match err {
                         TryRecvError::Empty => break,
                         TryRecvError::Disconnected => panic!("channel closed"),

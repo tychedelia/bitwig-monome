@@ -1,23 +1,25 @@
-use crate::message::{ClipEvent, ClipMessage};
+use crate::bitwig::message::{BitwigMessage, ClipEvent, ClipMessage};
 use rosc::OscPacket::{Bundle, Message};
 use rosc::{OscBundle, OscMessage, OscPacket, OscType};
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::mpsc::{Sender};
 
 
+#[derive(Debug)]
 pub(crate) struct OscRecv {
-    pub(crate) tx: Sender<ClipMessage>,
+    pub(crate) tx: Sender<BitwigMessage>,
     bind_addr: SocketAddr,
 }
 
 impl OscRecv {
-    pub(crate) fn new(tx: Sender<ClipMessage>, bind_addr: SocketAddr) -> Self {
+    pub(crate) fn new(tx: Sender<BitwigMessage>, bind_addr: SocketAddr) -> Self {
         Self {
             tx,
             bind_addr,
         }
     }
 
+    #[tracing::instrument]
     pub(crate) fn run(self) {
         let sock = UdpSocket::bind(self.bind_addr).unwrap();
         let mut buf = [0u8; 8192];
@@ -50,12 +52,13 @@ impl OscRecv {
             .for_each(|x| self.handle_packet(x));
     }
 
+    #[tracing::instrument]
     fn handle_message(&self, msg: OscMessage) {
         match msg.addr.as_str() {
             "/update" | "/beat/str" | "/time/str" | "/play" => {}
             s if s.starts_with("/track/selected") => {}
             s if s.starts_with("/track") && s.contains("clip") => self.handle_track_message(msg),
-            _ => {} // println!("{} {:?}", msg.addr, msg.args),
+            _ => tracing::info!(?msg, "receive message")
         }
     }
 
@@ -65,23 +68,23 @@ impl OscRecv {
         match msg.addr.as_str() {
             s if s.ends_with("isPlayingQueued") => {
                 self.tx
-                    .send(ClipMessage::new(track, scene, active, ClipEvent::Queued));
+                    .send(BitwigMessage::Clip(ClipMessage::new(track, scene, active, ClipEvent::Queued)));
             }
             s if s.ends_with("hasContent") => {
                 self.tx
-                    .send(ClipMessage::new(track, scene, active, ClipEvent::Content));
+                    .send(BitwigMessage::Clip(ClipMessage::new(track, scene, active, ClipEvent::Content)));
             }
             s if s.ends_with("isSelected") => {
                 self.tx
-                    .send(ClipMessage::new(track, scene, active, ClipEvent::Selected));
+                    .send(BitwigMessage::Clip(ClipMessage::new(track, scene, active, ClipEvent::Selected)));
             }
             s if s.ends_with("isStopQueued") => {
                 self.tx
-                    .send(ClipMessage::new(track, scene, active, ClipEvent::Stopping));
+                    .send(BitwigMessage::Clip(ClipMessage::new(track, scene, active, ClipEvent::Stopping)));
             }
             s if s.ends_with("isPlaying") => {
                 self.tx
-                    .send(ClipMessage::new(track, scene, active, ClipEvent::Playing));
+                    .send(BitwigMessage::Clip(ClipMessage::new(track, scene, active, ClipEvent::Playing)));
             }
             _ => {}
         }

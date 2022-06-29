@@ -1,13 +1,12 @@
 #![feature(div_duration)]
 
-mod message;
 mod osc_recv;
 mod osc_send;
 mod device;
 mod bitwig;
 
 
-use crate::message::{ClipEvent, ControlMessage};
+use bitwig::message::{ClipEvent, ControlMessage};
 use crate::osc_send::OscSend;
 use monome::{Monome, MonomeDeviceType};
 use osc_recv::OscRecv;
@@ -15,7 +14,7 @@ use std::error::Error;
 use std::net::SocketAddr;
 use clap::Parser;
 
-use std::sync::mpsc::{channel};
+use std::sync::mpsc::channel;
 use std::thread;
 
 use tracing_subscriber::{EnvFilter, fmt};
@@ -47,11 +46,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     // run clap
     let args: Args = Args::parse();
 
-    tracing::info!(?args, "listening");
-
+    // io channels
     let (tx_in, rx_in) = channel();
     let (tx_out, rx_out) = channel();
 
+    // initialize osc listeners
     thread::spawn(move || {
         let r = OscRecv::new(tx_in, args.bitwig_addr);
         r.run();
@@ -61,9 +60,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let s = OscSend::new(rx_out, bind_addr, args.osc_addr);
         s.run();
     });
+    tracing::info!(?args, "listening");
 
     tx_out.send(ControlMessage::Refresh)?;
 
+    // select connected device
     let monome = Monome::new("/bitwig-monome".to_string()).unwrap();
     match monome.device_type() {
         MonomeDeviceType::Grid => {

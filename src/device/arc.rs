@@ -1,16 +1,16 @@
 use std::sync::mpsc::{Receiver, Sender};
 use monome::Monome;
 use crate::ControlMessage;
-use crate::message::ClipMessage;
+use crate::bitwig::message::{BitwigMessage, ClipMessage};
 
 pub struct Arc {
     tx: Sender<ControlMessage>,
-    rx: Receiver<ClipMessage>,
+    rx: Receiver<BitwigMessage>,
     monome: Monome,
 }
 
 impl Arc {
-    pub fn new(tx: Sender<ControlMessage>, rx: Receiver<ClipMessage>, monome: Monome) -> Self {
+    pub fn new(tx: Sender<ControlMessage>, rx: Receiver<BitwigMessage>, monome: Monome) -> Self {
         Self {
             tx,
             rx,
