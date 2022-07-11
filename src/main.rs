@@ -37,9 +37,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let subscriber = tracing_subscriber::registry()
         .with(
             EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into())
+                .add_directive(tracing::Level::DEBUG.into())
         )
-        .with(fmt::Layer::new().pretty().with_writer(std::io::stdout));
+        .with(fmt::Layer::new().compact().with_writer(std::io::stdout));
     tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global collector");
 
     // run clap
@@ -50,6 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx_out, rx_out) = channel();
 
     // initialize osc listeners
+    tracing::info!(?args, "listening to bitwig");
     thread::spawn(move || {
         let r = OscRecv::new(tx_in, args.bitwig_addr);
         r.run();
@@ -59,15 +60,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         let s = OscSend::new(rx_out, bind_addr, args.osc_addr);
         s.run();
     });
-    tracing::info!(?args, "listening");
 
     // wait for device to connect
+    tracing::debug!("looking for monome device");
     let monome = loop {
         match Monome::new("/bitwig-monome".to_string()) {
             Ok(m) => break m,
             Err(e) => {
                 match e.as_str() {
                     "No devices detected" => {
+                        tracing::debug!("no device found, sleeping");
                         thread::sleep(Duration::from_secs(1));
                         continue
                     }
@@ -78,6 +80,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // get initial state from bitwig
+    tracing::info!(?args, "refreshing state");
     tx_out.send(ControlMessage::Refresh)?;
 
     // select connected device

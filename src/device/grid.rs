@@ -52,14 +52,14 @@ impl Grid {
                             (ClipEvent::Playing, false) => {
                                 match s.state {
                                     ClipState::Playing => s.state = ClipState::Filled,
-                                    _ => panic!("{:?}", s.state)
+                                    _ => {}
                                 }
                             }
                             (ClipEvent::Stopping, true) => s.state = ClipState::Stopping,
                             (ClipEvent::Stopping, false) => {
                                 match s.state {
-                                    ClipState::Playing => s.state = ClipState::Filled,
-                                    _ => panic!("{:?}", s.state)
+                                    ClipState::Playing | ClipState::Stopping => s.state = ClipState::Filled,
+                                    _ => {}
                                 }
                             }
                             (ClipEvent::Content, true) => s.state = ClipState::Filled,
@@ -67,8 +67,9 @@ impl Grid {
                             (ClipEvent::Queued, true) => s.state = ClipState::Queued,
                             (ClipEvent::Queued, false) => {
                                 match s.state {
-                                    ClipState::Playing => s.state = ClipState::Filled,
-                                    _ => panic!("{:?}", s.state)
+                                    ClipState::Playing | ClipState::Queued => s.state = ClipState::Filled,
+
+                                    _ => {}
                                 }
                             }
                             _ => {}
