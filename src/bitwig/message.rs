@@ -13,10 +13,7 @@ pub struct DeviceMessage {
 
 impl DeviceMessage {
     pub fn new(param: u8, value: i32) -> Self {
-        Self {
-            param,
-            value
-        }
+        Self { param, value }
     }
 }
 
@@ -60,7 +57,7 @@ impl TrackMessage {
         Self {
             track,
             active,
-            event
+            event,
         }
     }
 }
@@ -69,7 +66,6 @@ impl TrackMessage {
 pub enum TrackEvent {
     Selected,
 }
-
 
 #[derive(Debug)]
 pub enum ControlMessage {

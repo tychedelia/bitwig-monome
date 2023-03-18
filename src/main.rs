@@ -1,44 +1,43 @@
 #![feature(div_duration)]
 
-mod device;
 mod bitwig;
-
+mod device;
 
 use bitwig::message::{ClipEvent, ControlMessage};
-use bitwig::osc_send::OscSend;
-use monome::{Monome, MonomeDeviceType};
 use bitwig::osc_recv::OscRecv;
+use bitwig::osc_send::OscSend;
+use clap::Parser;
+use monome::{Monome, MonomeDeviceType};
 use std::error::Error;
 use std::net::SocketAddr;
-use clap::Parser;
 
 use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
 
-use tracing_subscriber::{EnvFilter, fmt};
-use tracing_subscriber::layer::SubscriberExt;
 use crate::bitwig::clip::ClipState;
-use crate::device::grid::Grid;
 use crate::device::arc::Arc;
+use crate::device::grid::Grid;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::{fmt, EnvFilter};
 
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None)]
 struct Args {
-    #[clap(short, long, value_parser, default_value = "127.0.0.1:9000")]
+    #[arg(short, long, value_parser, default_value = "127.0.0.1:9000")]
     pub bitwig_addr: SocketAddr,
 
-    #[clap(short, long, value_parser, default_value = "127.0.0.1:8000")]
+    #[arg(short, long, value_parser, default_value = "127.0.0.1:8000")]
     pub osc_addr: SocketAddr,
+
+    #[arg(value_enum, default_value = "east")]
+    direction: device::grid::Direction,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     // install tracing
     let subscriber = tracing_subscriber::registry()
-        .with(
-            EnvFilter::from_default_env()
-                .add_directive(tracing::Level::DEBUG.into())
-        )
+        .with(EnvFilter::from_default_env().add_directive(tracing::Level::TRACE.into()))
         .with(fmt::Layer::new().compact().with_writer(std::io::stdout));
     tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global collector");
 
@@ -56,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         r.run();
     });
     thread::spawn(move || {
-        let bind_addr  = "127.0.0.1:0".parse().unwrap();
+        let bind_addr = "127.0.0.1:0".parse().unwrap();
         let s = OscSend::new(rx_out, bind_addr, args.osc_addr);
         s.run();
     });
@@ -66,15 +65,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let monome = loop {
         match Monome::new("/bitwig-monome".to_string()) {
             Ok(m) => break m,
-            Err(e) => {
-                match e.as_str() {
-                    "No devices detected" => {
-                        tracing::debug!("no device found, sleeping");
-                        thread::sleep(Duration::from_secs(1));
-                        continue
-                    }
-                    _ => panic!("{}", e)
+            Err(e) => match e.as_str() {
+                "No devices detected" => {
+                    tracing::debug!("no device found, sleeping");
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
                 }
+                _ => panic!("{}", e),
             },
         };
     };
@@ -87,7 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     match monome.device_type() {
         MonomeDeviceType::Grid => {
             tracing::info!(?monome, "found grid device");
-            let grid = Grid::new(tx_out, rx_in, monome);
+            let grid = Grid::new(args.direction, tx_out, rx_in, monome);
             grid.run();
         }
         MonomeDeviceType::Arc => {

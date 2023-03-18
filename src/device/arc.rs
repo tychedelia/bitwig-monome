@@ -1,8 +1,7 @@
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
-use monome::Monome;
-use crate::ControlMessage;
 use crate::bitwig::message::{BitwigMessage, ClipMessage, TrackEvent};
-
+use crate::ControlMessage;
+use monome::Monome;
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 pub struct Arc {
     tx: Sender<ControlMessage>,
@@ -17,7 +16,7 @@ impl Arc {
             tx,
             rx,
             monome,
-            arc: [0,0,0,0]
+            arc: [0, 0, 0, 0],
         }
     }
 
@@ -45,15 +44,13 @@ impl Arc {
                                 }
                             }
                         }
-                        BitwigMessage::Primary(msg) => {
-                            match msg.param {
-                                0..=3 => {
-                                    self.update_state(msg.param, msg.value);
-                                }
-                                _ => {}
+                        BitwigMessage::Primary(msg) => match msg.param {
+                            0..=3 => {
+                                self.update_state(msg.param, msg.value);
                             }
-                        }
-                    }
+                            _ => {}
+                        },
+                    },
                     Err(err) => match err {
                         TryRecvError::Empty => break,
                         TryRecvError::Disconnected => panic!("channel closed!"),

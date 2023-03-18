@@ -1,11 +1,23 @@
+use crate::bitwig::clip::Clip;
+use crate::bitwig::message::{BitwigMessage, ClipMessage};
+use crate::{ClipEvent, ClipState, ControlMessage};
+use monome::{Monome, MonomeEvent};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::time::Duration;
-use monome::{Monome, MonomeEvent};
-use crate::bitwig::clip::Clip;
-use crate::{ClipEvent, ClipState, ControlMessage};
-use crate::bitwig::message::{BitwigMessage, ClipMessage};
+
+/// Direction of the Grid device, as indicated by the power plug. In other words,
+/// if the power plug is on the "top" of the device in a vertical orientatino, the
+/// device is facing "North".
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
 
 pub(crate) struct Grid {
+    direction: Direction,
     rx: Receiver<BitwigMessage>,
     tx: Sender<ControlMessage>,
     grid: Vec<Clip>,
@@ -13,8 +25,14 @@ pub(crate) struct Grid {
 }
 
 impl Grid {
-    pub fn new(tx: Sender<ControlMessage>, rx: Receiver<BitwigMessage>, monome: Monome) -> Self {
+    pub fn new(
+        direction: Direction,
+        tx: Sender<ControlMessage>,
+        rx: Receiver<BitwigMessage>,
+        monome: Monome,
+    ) -> Self {
         Self {
+            direction,
             rx,
             tx,
             grid: vec![Clip::new(); 128],
@@ -49,33 +67,31 @@ impl Grid {
                         let s = self.clip_mut(msg.track, msg.scene);
                         match (msg.event, msg.active) {
                             (ClipEvent::Playing, true) => s.state = ClipState::Playing,
-                            (ClipEvent::Playing, false) => {
-                                match s.state {
-                                    ClipState::Playing => s.state = ClipState::Filled,
-                                    _ => {}
-                                }
-                            }
+                            (ClipEvent::Playing, false) => match s.state {
+                                ClipState::Playing => s.state = ClipState::Filled,
+                                _ => {}
+                            },
                             (ClipEvent::Stopping, true) => s.state = ClipState::Stopping,
-                            (ClipEvent::Stopping, false) => {
-                                match s.state {
-                                    ClipState::Playing | ClipState::Stopping => s.state = ClipState::Filled,
-                                    _ => {}
+                            (ClipEvent::Stopping, false) => match s.state {
+                                ClipState::Playing | ClipState::Stopping => {
+                                    s.state = ClipState::Filled
                                 }
-                            }
+                                _ => {}
+                            },
                             (ClipEvent::Content, true) => s.state = ClipState::Filled,
                             (ClipEvent::Content, false) => s.state = ClipState::Empty,
                             (ClipEvent::Queued, true) => s.state = ClipState::Queued,
-                            (ClipEvent::Queued, false) => {
-                                match s.state {
-                                    ClipState::Playing | ClipState::Queued => s.state = ClipState::Filled,
-
-                                    _ => {}
+                            (ClipEvent::Queued, false) => match s.state {
+                                ClipState::Playing | ClipState::Queued => {
+                                    s.state = ClipState::Filled
                                 }
-                            }
+
+                                _ => {}
+                            },
                             _ => {}
                         }
                     }
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(err) => match err {
                         TryRecvError::Empty => break,
                         TryRecvError::Disconnected => panic!("channel closed!"),
